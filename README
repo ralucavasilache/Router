@@ -1,0 +1,127 @@
+NUME: Vasilache Raluca
+GRUPA: 324CA
+
+				
+				Tema #1 - Protocoala de Comunicatie
+				
+	
+   #	Scop: implementarea procesului de dirijare a pachetelor dintr-un router
+   #    Protocoale folosite: ETHERNET, ICMP, ARP
+	
+   #	Proiectul contine urmatoarele fisiere:
+	-  router.c
+	-  skel.c si skel.h
+	-  list.c si list.h
+	-  queue.c si queue.c
+	-  Makefile
+	-  README
+	
+   #    Implementare:
+   
+   Se vor folosi urmatoarele structuri pentru a memora tabela de rutare si tabela arp :
+   -  rtable_entry
+   -  arp_table_entry
+   
+   In main se vor instantia 2 vectori, unul cu elemente rtable_entry, altul cu elemente
+   arp_table_entry, care reprezinta cele doua tabele.
+   
+   Tabela de rutare va fi sortata crescator dupa prefix si descrescator dupa masca
+   in O(nlogn) folosind qsort si un comparator. Acest lucru este util pentru alegerea
+   celei mai bune rute. 
+   
+   1. Parsarea tabelei de rutare
+   	
+   	- se realizeaza folosind functia int parse_routing_table(char* file,
+   	struct rtable_entry* rtable) care citeste fiecare linie din fisier si memoreaza
+   	cele 4 campuri intr-o structura special definita, rtable_entry; functia intoarce 
+   	dimensiunea tabelei;
+   	
+   2. Procesul de dirijare
+   
+   
+   	Pentru fiecare pachet primit se verifica din ce categorie face parte: IP sau ARP
+   	* pentru a verifica daca un pachet este de tip IP testam daca ether_type-ul este
+   	0x0800;
+   	* pentru a verifica ca un pachet este arp, se foloseste functia parse_arp trebuie
+   	sa intoarca un rezultat nenul
+   	
+   	** Pachetele IP
+   	
+   	   -> daca ip-ul destinatiei corespunde cu cel al router-ului (mai exact al
+   	    interferei router-ului pe care soseste), se va raspunde
+   	    cu un pachet ICMP_REPLY (schimbandu-se adresele sursa cu cele destinatie)
+   	    doar daca pachetul a fost unul ICMP_ECHO, altfel se da drop la pachet
+   	    -> se verifica daca ttl-ul este <= 1 si in caz afirmativ se trimite un
+   	    pachet ICMP catre sursa care semnaleaza o eroare de tip TIME_EXCEEDED
+   	    -> se verifica daca checksum este corect, iar daca NU este se va da drop la pachet
+   	    
+   	    Daca niciuna dintre conditiile de mai sus nu este indeplinita, pachetul
+   	    trebuie trimis mai departe:
+   	    
+   	    -> se decrementeaza ttl si se recalculeaza checksum-ul
+   	    -> se alege cea mai buna ruta folosind functia struct rtable_entry*
+   	     get_best_route(struct rtable_entry *rtable, int start, int end, uint32_t ip)
+   	     care intoarce intrarea corespunzatoare celei mai bune rute din tabela de rutare;
+   	     aceasta alegere se va face in O(logn) aplicand binary search pe tabela sortata
+   	     anterior;
+   	     -> daca functia returneaza null, nu s-a gasit nicio intrare corespunzatoare
+   	     si se va trimite sursei un pachet ICMP care semnaleaza o eroare de tip 
+   	     DESTINATION_UNREACHABLE
+   	     
+   	     Daca s-a ajuns in acest punct trebuie sa folosim tabela arp pentru trimiterea
+   	     mesajului mai departe, catre next_hop.
+   	     
+   	     -> actualizam interfata pachetului cu cea indicata de best_entry, precum
+   	     si adresa mac sursa cu cea corespunzatoare interfetei
+   	     -> se cauta in tabela arp o intrare care sa aiba ip-ul = next_hop
+   	     -> daca s-a gasit, mac-ul next_hop ului este cunoscut si se poate face send 
+   	     la pachet
+   	     -> daca nu s-a gasit, pachetul este pus in coada si se genereaza un pachet
+   	     arp de tip ARP_REQUEST astfel: mac_dest = adresa de broadcast
+   	     				     mac_src  = mac-ul interfetei lui best_entry
+   	     				     ip_dest  = next_hop
+   	     				     ip_sr = ip-ul interfetei lui best_entry
+   	     				    
+   	** Pachetele ARP
+   	     
+   	     Se impart, la randul lor, in doua categorii: ARP_REQUEST si ARP_REPLY
+   	     
+   	     ->  daca s-a primit un pachet ARP_REQUEST destinat routerului (ip-ul destinatiei
+   	     este egal cu cel al inerfetei pe care s-a transmis), se va raspunde cu un
+   	     ARP_REPLY facand switch intre adresele sursa si destinatie;
+   	     
+   	     -> daca s-a primit un ARP_REPLY, verificam daca acesta a venit in urma unui
+   	     ARP_REQUEST generat de router (adica daca exista pachete in asteptare in coada),
+   	     iar in caz afirmativ inregistram perechea ip-mac in tabela arp, pentru cazul
+   	     in care ne vor folosi la un pachet ulterior care trebuie dirijat, se scoate un
+   	     pachet din coada, se completeaza mac_dest cu cel abia primit si se trimite
+   	     mai departe;
+   	     
+   	     
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
+   	    
